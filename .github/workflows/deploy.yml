@@ -3,7 +3,11 @@ name: Deploy to GKE
 on:
   push:
     branches:
-      - main    
+      - main
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   deploy:
@@ -24,7 +28,8 @@ jobs:
       uses: google-github-actions/setup-gcloud@v1
 
     - name: Install GKE auth plugin
-      run: gcloud components install gke-gcloud-auth-plugin --quiet
+      run: |
+        gcloud components install gke-gcloud-auth-plugin --quiet
 
     - name: Get GKE credentials
       run: |
