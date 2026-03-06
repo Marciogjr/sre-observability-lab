@@ -51,6 +51,7 @@ helm install kibana elastic/kibana
 helm install filebeat elastic/filebeat
 
 ## 6. CI/CD
+Trigger CI pipeline
 
 Pipeline automática usando GitHub Actions.
 =======
