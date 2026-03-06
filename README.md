@@ -1,3 +1,4 @@
+
 # SRE Observability Lab
 
 Projeto de desafio SRE utilizando Kubernetes no GCP com stack completa de observabilidade.
@@ -52,3 +53,6 @@ helm install filebeat elastic/filebeat
 ## 6. CI/CD
 
 Pipeline automática usando GitHub Actions.
+=======
+# sre-observability-lab
+>>>>>>> fb60d0370e712561e290e89fc71037565867cfca
