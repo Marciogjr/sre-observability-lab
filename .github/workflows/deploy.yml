@@ -1,0 +1,31 @@
+name: Deploy to GKE
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Authenticate GCP
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Setup gcloud
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Get GKE credentials
+      run: |
+        gcloud container clusters get-credentials sre-cluster         --zone us-central1-a         --project ${{ secrets.GCP_PROJECT }}
+
+    - name: Deploy manifests
+      run: |
+        kubectl apply -f k8s/

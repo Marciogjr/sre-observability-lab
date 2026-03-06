@@ -1,0 +1,4 @@
+filebeat.autodiscover:
+  providers:
+  - type: kubernetes
+    node: ${NODE_NAME}

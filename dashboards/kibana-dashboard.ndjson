@@ -1,0 +1,1 @@
+{"type":"index-pattern","id":"filebeat-*","attributes":{"title":"filebeat-*","timeFieldName":"@timestamp"}}
