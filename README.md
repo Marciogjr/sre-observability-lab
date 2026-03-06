@@ -1,7 +1,7 @@
 
 # SRE Observability Lab
 
-Projeto de desafio SRE utilizando Kubernetes no GCP com stack completa de observabilidade
+Projeto de desafio SRE utilizando Kubernetes no GCP com stack completa de observabilidade.
 
 ## Stack
 - GKE
