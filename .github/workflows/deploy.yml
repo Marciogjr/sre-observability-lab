@@ -3,28 +3,37 @@ name: Deploy to GKE
 on:
   push:
     branches:
-      - main    
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Authenticate GCP
-      uses: google-github-actions/auth@v1
+    - name: Authenticate to GCP
+      id: auth
+      uses: google-github-actions/auth@v2
       with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.SERVICE_ACCOUNT }}
 
     - name: Setup gcloud
-      uses: google-github-actions/setup-gcloud@v1
+      uses: google-github-actions/setup-gcloud@v2
 
     - name: Get GKE credentials
       run: |
-        gcloud container clusters get-credentials sre-cluster         --zone us-central1-a         --project ${{ secrets.GCP_PROJECT }}
+        gcloud container clusters get-credentials sre-cluster \
+        --zone us-central1-a \
+        --project ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Deploy manifests
       run: |
