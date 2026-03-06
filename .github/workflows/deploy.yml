@@ -3,7 +3,7 @@ name: Deploy to GKE
 on:
   push:
     branches:
-      - main
+      - main    
 
 jobs:
   deploy:
@@ -14,29 +14,24 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Authenticate to GCP
+    - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v1
       with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        workload_identity_provider: projects/1056238819180/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+        service_account: github-actions@sre-lab-489313.iam.gserviceaccount.com
 
     - name: Setup gcloud
       uses: google-github-actions/setup-gcloud@v1
 
     - name: Install GKE auth plugin
-      run: |
-        gcloud components install gke-gcloud-auth-plugin --quiet
+      run: gcloud components install gke-gcloud-auth-plugin --quiet
 
     - name: Get GKE credentials
       run: |
         gcloud container clusters get-credentials sre-cluster \
-          --zone us-central1-a \
-          --project ${{ secrets.GCP_PROJECT }}
-
-    - name: Create namespace
-      run: |
-        kubectl apply -f k8s/namespace.yaml
+        --zone us-central1-a \
+        --project sre-lab-489313
 
     - name: Deploy manifests
       run: |
-        kubectl apply -f k8s/app-deployment.yaml
-        kubectl apply -f k8s/app-service.yaml
+        kubectl apply -f k8s/
