@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - homol
 
 permissions:
   contents: read
@@ -12,6 +13,12 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    env:
+      PROJECT_ID: sre-lab-489313
+      CLUSTER_NAME: sre-cluster
+      CLUSTER_ZONE: us-central1-a
+      IMAGE: sre-observability-app
 
     steps:
 
@@ -27,15 +34,32 @@ jobs:
     - name: Setup gcloud
       uses: google-github-actions/setup-gcloud@v1
 
+    - name: Configure Docker
+      run: |
+        gcloud auth configure-docker us-central1-docker.pkg.dev
+
+    - name: Build Docker image
+      run: |
+        docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/sre-repo/$IMAGE:${{ github.sha }} .
+
+    - name: Push Docker image
+      run: |
+        docker push us-central1-docker.pkg.dev/$PROJECT_ID/sre-repo/$IMAGE:${{ github.sha }}
+
     - name: Install GKE auth plugin
       run: |
         gcloud components install gke-gcloud-auth-plugin --quiet
 
     - name: Get GKE credentials
       run: |
-        gcloud container clusters get-credentials sre-cluster \
-        --zone us-central1-a \
-        --project sre-lab-489313
+        gcloud container clusters get-credentials $CLUSTER_NAME \
+        --zone $CLUSTER_ZONE \
+        --project $PROJECT_ID
+
+    - name: Update deployment image
+      run: |
+        kubectl set image deployment/sre-app \
+        sre-app=us-central1-docker.pkg.dev/$PROJECT_ID/sre-repo/$IMAGE:${{ github.sha }}
 
     - name: Deploy manifests
       run: |
