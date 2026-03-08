@@ -57,11 +57,19 @@ jobs:
           --zone $CLUSTER_ZONE \
           --project $PROJECT_ID
 
+      # aplica todos os manifestos primeiro
+      - name: Deploy Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/
+          kubectl apply -f logging/
+
+      # depois atualiza a imagem da aplicação
       - name: Update deployment image
         run: |
           kubectl set image deployment/sre-app \
           sre-app=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }}
 
-      - name: Deploy manifests
+      # garantir que o rollout finalizou
+      - name: Verify rollout
         run: |
-          kubectl apply -f k8s/
+          kubectl rollout status deployment/sre-app
