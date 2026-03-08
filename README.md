@@ -259,7 +259,7 @@ logging/kibana.yaml
 
 ---
 
-# 🚀 Passo a Passo para Subir a Estrutura
+#  Passo a Passo para Subir a Estrutura
 
 Esta seção descreve todos os comandos utilizados para provisionar e executar o laboratório.
 
