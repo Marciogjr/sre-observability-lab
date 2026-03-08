@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: elasticsearch
+  labels:
+    app: elasticsearch
 spec:
   replicas: 1
   selector:
@@ -17,24 +19,51 @@ spec:
         image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
         ports:
         - containerPort: 9200
+        - containerPort: 9300
+
         env:
         - name: discovery.type
           value: single-node
+
+        - name: xpack.security.enabled
+          value: "false"
+
+        - name: ES_JAVA_OPTS
+          value: "-Xms512m -Xmx512m"
+
         resources:
           requests:
             cpu: "200m"
-            memory: "512Mi"
+            memory: "700Mi"
           limits:
             cpu: "500m"
             memory: "1Gi"
+
+        volumeMounts:
+        - name: elasticsearch-data
+          mountPath: /usr/share/elasticsearch/data
+
+      volumes:
+      - name: elasticsearch-data
+        emptyDir: {}
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
   name: elasticsearch
+  labels:
+    app: elasticsearch
 spec:
+  type: ClusterIP
   selector:
     app: elasticsearch
   ports:
-    - port: 9200
+    - name: http
+      port: 9200
       targetPort: 9200
+
+    - name: transport
+      port: 9300
+      targetPort: 9300
