@@ -4,63 +4,43 @@ on:
   push:
     branches:
       - main
-      - homol
 
-permissions:
-  contents: read
-  id-token: write
+env:
+  PROJECT_ID: sre-lab-489313
+  IMAGE: sre-observability-app
+  REPO: sre-repo
+  REGION: us-central1
+  CLUSTER: sre-cluster
+  ZONE: us-central1-a
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      PROJECT_ID: sre-lab-489313
-      CLUSTER_NAME: sre-cluster
-      CLUSTER_ZONE: us-central1-a
-      IMAGE: sre-observability-app
-
     steps:
+      - uses: actions/checkout@v3
 
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Authenticate GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v1
-      with:
-        workload_identity_provider: projects/1056238819180/locations/global/workloadIdentityPools/github-pool/providers/github-provider
-        service_account: github-actions@sre-lab-489313.iam.gserviceaccount.com
+      - name: Configure Docker
+        run: gcloud auth configure-docker $REGION-docker.pkg.dev
 
-    - name: Setup gcloud
-      uses: google-github-actions/setup-gcloud@v1
+      - name: Build Image
+        run: |
+          docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$IMAGE:${{ github.sha }} .
 
-    - name: Configure Docker
-      run: |
-        gcloud auth configure-docker us-central1-docker.pkg.dev
+      - name: Push Image
+        run: |
+          docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$IMAGE:${{ github.sha }}
 
-    - name: Build Docker image
-      run: |
-        docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/sre-repo/$IMAGE:${{ github.sha }} .
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials $CLUSTER --zone $ZONE --project $PROJECT_ID
 
-    - name: Push Docker image
-      run: |
-        docker push us-central1-docker.pkg.dev/$PROJECT_ID/sre-repo/$IMAGE:${{ github.sha }}
-
-    - name: Install GKE auth plugin
-      run: |
-        gcloud components install gke-gcloud-auth-plugin --quiet
-
-    - name: Get GKE credentials
-      run: |
-        gcloud container clusters get-credentials $CLUSTER_NAME \
-        --zone $CLUSTER_ZONE \
-        --project $PROJECT_ID
-
-    - name: Update deployment image
-      run: |
-        kubectl set image deployment/sre-app \
-        sre-app=us-central1-docker.pkg.dev/$PROJECT_ID/sre-repo/$IMAGE:${{ github.sha }}
-
-    - name: Deploy manifests
-      run: |
-        kubectl apply -f k8s/
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/sre-app \
+          sre-app=$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$IMAGE:${{ github.sha }}
