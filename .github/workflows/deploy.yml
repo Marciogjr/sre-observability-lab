@@ -20,6 +20,7 @@ jobs:
       IMAGE: sre-observability-app
       REPOSITORY: sre-repo
       REGION: us-central1
+      NAMESPACE: sre-lab
 
     steps:
 
@@ -57,19 +58,30 @@ jobs:
           --zone $CLUSTER_ZONE \
           --project $PROJECT_ID
 
-      # aplica todos os manifestos primeiro
+      # Cria namespace se não existir
+      - name: Ensure namespace exists
+        run: |
+          kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
+
+      # aplica todos os manifestos depois que o namespace estiver criado
       - name: Deploy Kubernetes manifests
         run: |
-          kubectl apply -f k8s/
-          kubectl apply -f logging/
+          kubectl apply -f k8s/ -n $NAMESPACE
+          kubectl apply -f logging/ -n $NAMESPACE
 
-      # depois atualiza a imagem da aplicação
+      # Atualiza a imagem da aplicação no deployment existente
       - name: Update deployment image
         run: |
           kubectl set image deployment/sre-app \
-          sre-app=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }}
+            sre-app=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }} \
+            -n $NAMESPACE
 
-      # garantir que o rollout finalizou
+      # Garante que o rollout finalizou e os pods estão prontos
       - name: Verify rollout
         run: |
-          kubectl rollout status deployment/sre-app
+          kubectl rollout status deployment/sre-app -n $NAMESPACE
+
+      # Lista os pods para verificação final
+      - name: List pods
+        run: |
+          kubectl get pods -n $NAMESPACE -o wide
