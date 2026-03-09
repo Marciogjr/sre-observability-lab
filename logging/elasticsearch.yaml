@@ -1,3 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-pvc
+  namespace: logging
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,6 +32,7 @@ spec:
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+
         ports:
         - containerPort: 9200
         - containerPort: 9300
@@ -46,7 +61,8 @@ spec:
 
       volumes:
       - name: elasticsearch-data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: elasticsearch-pvc
 
 ---
 
@@ -65,7 +81,6 @@ spec:
     - name: http
       port: 9200
       targetPort: 9200
-
     - name: transport
       port: 9300
       targetPort: 9300
