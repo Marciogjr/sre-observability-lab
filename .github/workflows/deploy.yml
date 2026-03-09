@@ -58,16 +58,20 @@ jobs:
           --zone $CLUSTER_ZONE \
           --project $PROJECT_ID
 
-      # Cria namespace se não existir
-      - name: Ensure namespace exists
+      # Cria o namespace sre-lab se não existir
+      - name: Ensure sre-lab namespace exists
         run: |
           kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
 
-      # aplica todos os manifestos depois que o namespace estiver criado
-      - name: Deploy Kubernetes manifests
+      # Aplica todos os manifests da aplicação no namespace correto
+      - name: Deploy sre-app manifests
         run: |
           kubectl apply -f k8s/ -n $NAMESPACE
-          kubectl apply -f logging/ -n $NAMESPACE
+
+      # Aplica os manifests de logging no próprio namespace definido nos manifests
+      - name: Deploy logging manifests
+        run: |
+          kubectl apply -f logging/
 
       # Atualiza a imagem da aplicação no deployment existente
       - name: Update deployment image
@@ -76,12 +80,12 @@ jobs:
             sre-app=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }} \
             -n $NAMESPACE
 
-      # Garante que o rollout finalizou e os pods estão prontos
+      # Aguarda o rollout finalizar
       - name: Verify rollout
         run: |
           kubectl rollout status deployment/sre-app -n $NAMESPACE
 
-      # Lista os pods para verificação final
-      - name: List pods
+      # Lista todos os pods do namespace sre-lab
+      - name: List sre-lab pods
         run: |
           kubectl get pods -n $NAMESPACE -o wide
