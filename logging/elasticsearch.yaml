@@ -1,4 +1,9 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: logging
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: elasticsearch-pvc
@@ -6,94 +11,119 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: standard-rwo
   resources:
     requests:
       storage: 10Gi
-
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: elasticsearch
   namespace: logging
-  labels:
-    app: elasticsearch
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: elasticsearch
-
   template:
     metadata:
       labels:
         app: elasticsearch
-
     spec:
-
+      securityContext:
+        fsGroup: 1000
       initContainers:
-      - name: sysctl
+      - name: fix-permissions
         image: busybox
-        command: ["sh", "-c", "sysctl -w vm.max_map_count=262144"]
-        securityContext:
-          privileged: true
-
+        command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data"]
+        volumeMounts:
+        - name: elasticsearch-storage
+          mountPath: /usr/share/elasticsearch/data
       containers:
       - name: elasticsearch
         image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
-
-        ports:
-        - containerPort: 9200
-        - containerPort: 9300
-
         env:
         - name: discovery.type
           value: single-node
-
-        - name: xpack.security.enabled
-          value: "false"
-
         - name: ES_JAVA_OPTS
           value: "-Xms512m -Xmx512m"
-
-        resources:
-          requests:
-            cpu: "200m"
-            memory: "700Mi"
-          limits:
-            cpu: "500m"
-            memory: "1Gi"
-
+        - name: xpack.security.enabled
+          value: "false"
+        ports:
+        - containerPort: 9200
+        - containerPort: 9300
         volumeMounts:
-        - name: elasticsearch-data
+        - name: elasticsearch-storage
           mountPath: /usr/share/elasticsearch/data
-
+        resources:
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
       volumes:
-      - name: elasticsearch-data
+      - name: elasticsearch-storage
         persistentVolumeClaim:
           claimName: elasticsearch-pvc
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
   name: elasticsearch
   namespace: logging
-  labels:
-    app: elasticsearch
 spec:
-  type: ClusterIP
   selector:
     app: elasticsearch
-
   ports:
-    - name: http
-      port: 9200
-      targetPort: 9200
-
-    - name: transport
-      port: 9300
-      targetPort: 9300
+  - port: 9200
+    targetPort: 9200
+    name: http
+  - port: 9300
+    targetPort: 9300
+    name: transport
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+      - name: kibana
+        image: docker.elastic.co/kibana/kibana:8.12.0
+        env:
+        - name: ELASTICSEARCH_HOSTS
+          value: http://elasticsearch:9200
+        ports:
+        - containerPort: 5601
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: logging
+spec:
+  selector:
+    app: kibana
+  ports:
+  - port: 5601
+    targetPort: 5601
+  type: ClusterIP
